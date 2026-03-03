@@ -1,0 +1,5 @@
+{
+  "name": "Mapa de Salas",
+  "description": "A medical room scheduling application to manage doctors, rooms, and weekly shifts with a shareable visual map.",
+  "requestFramePermissions": []
+}
