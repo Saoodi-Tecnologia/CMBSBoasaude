@@ -1,9 +1,11 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import { supabase } from './supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 async function startServer() {
+  const { supabase } = await import('./supabase');
   const app = express();
   const PORT = 3000;
 

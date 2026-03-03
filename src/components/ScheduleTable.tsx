@@ -26,56 +26,59 @@ export default function ScheduleTable({ schedules, disabled, dayLabel, formatted
   }
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
-      <div className="bg-gray-200 px-4 py-2 border-b border-gray-300">
-        <h2 className="text-lg font-bold text-gray-700">
+    <div className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100 mb-6 transition-all hover:shadow-2xl">
+      <div className="bg-gray-100/80 px-4 md:px-6 py-3 border-b border-gray-200">
+        <h2 className="text-base md:text-lg font-black text-gray-800 tracking-tight">
           DIA {formattedDate} / {labelUpper || dayLabel.toUpperCase()}
         </h2>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-0">
         <table className="min-w-full border-collapse">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 border-r border-gray-200 w-1/4">Consultório</th>
-              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 border-r border-gray-200 w-1/4">Profissional</th>
-              <th className="px-4 py-2 text-center text-sm font-semibold text-gray-600 border-r border-gray-200 w-1/6">Horário</th>
-              <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 w-1/3">Especialidade</th>
+            <tr className="bg-gray-50/50 border-b border-gray-200">
+              <th className="px-3 md:px-4 py-3 text-left text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest border-r border-gray-100">Consultório</th>
+              <th className="px-3 md:px-4 py-3 text-left text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest border-r border-gray-100">Profissional</th>
+              <th className="px-3 md:px-4 py-3 text-center text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest border-r border-gray-100">Horário</th>
+              <th className="hidden md:table-cell px-3 md:px-4 py-3 text-left text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest">Especialidade</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {schedules.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">
+                <td colSpan={4} className="px-4 py-10 text-center text-gray-400 italic text-sm">
                   Nenhuma alocação registrada para este dia.
                 </td>
               </tr>
             ) : (
               schedules.map((schedule) => (
-                <tr key={schedule.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                <tr key={schedule.id} className="last:border-0 hover:bg-gray-50/50 transition-colors">
                   <td
-                    className="px-4 py-3 text-sm font-medium border-r border-gray-200 text-gray-900"
+                    className="px-3 md:px-4 py-3 text-[11px] md:text-sm font-bold border-r border-gray-100 text-gray-900"
                     style={{
-                      backgroundColor: schedule.shift === 'MANHÃ' ? '#dcfce7' : schedule.shift === 'TARDE' ? '#ffedd5' : '#dbeafe' // green, orange, blue
+                      backgroundColor: schedule.shift === 'MANHÃ' ? 'rgba(22, 163, 74, 0.05)' : schedule.shift === 'TARDE' ? 'rgba(234, 88, 12, 0.05)' : 'rgba(37, 99, 235, 0.05)'
                     }}
                   >
                     <div className="flex items-center">
                       <div
-                        className="w-3 h-3 rounded-full mr-2 shadow-sm"
+                        className="w-2 h-2 md:w-3 md:h-3 rounded-full mr-2 shadow-sm flex-shrink-0"
                         style={{
-                          backgroundColor: schedule.shift === 'MANHÃ' ? '#16a34a' : schedule.shift === 'TARDE' ? '#ea580c' : '#2563eb' // green, orange, blue
+                          backgroundColor: schedule.shift === 'MANHÃ' ? '#16a34a' : schedule.shift === 'TARDE' ? '#ea580c' : '#2563eb'
                         }}
                       />
-                      {schedule.room_name} <span className="text-gray-600 ml-1">- {schedule.shift}</span>
+                      <div className="flex flex-col">
+                        <span className="truncate max-w-[80px] md:max-w-none">{schedule.room_name}</span>
+                        <span className="text-[9px] md:text-[10px] text-gray-500 font-medium">({schedule.shift})</span>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-800 border-r border-gray-200 font-medium">
+                  <td className="px-3 md:px-4 py-3 text-[11px] md:text-sm text-gray-800 border-r border-gray-100 font-semibold">
                     {schedule.doctor_name}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 text-center border-r border-gray-200">
+                  <td className="px-2 md:px-4 py-3 text-[10px] md:text-xs text-gray-600 text-center border-r border-gray-100 font-medium whitespace-nowrap">
                     {schedule.time_slot}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 uppercase tracking-wide">
+                  <td className="hidden md:table-cell px-4 py-3 text-xs text-gray-500 uppercase tracking-tighter">
                     {schedule.doctor_specialty}
                   </td>
                 </tr>

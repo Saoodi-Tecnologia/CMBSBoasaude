@@ -19,30 +19,30 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden px-4 md:px-8">
       {/* Background Pattern */}
-      <div className="absolute inset-0 pointer-events-none">
-        <Calendar className="absolute top-10 left-10 w-24 h-24 text-brand-primary/10" />
-        <Users className="absolute top-20 right-20 w-32 h-32 text-brand-primary/10" />
-        <Activity className="absolute bottom-10 left-1/4 w-20 h-20 text-brand-primary/10" />
-        <Stethoscope className="absolute top-1/3 left-10 w-16 h-16 text-brand-primary/10" />
-        <Clock className="absolute bottom-20 right-10 w-28 h-28 text-brand-primary/10" />
-        <HeartPulse className="absolute top-1/2 right-1/4 w-12 h-12 text-brand-primary/10" />
-        <LayoutGrid className="absolute bottom-1/3 left-20 w-24 h-24 text-brand-primary/10" />
+      <div className="absolute inset-0 pointer-events-none opacity-50 md:opacity-100">
+        <Calendar className="absolute top-10 left-10 w-16 h-16 md:w-24 md:h-24 text-brand-primary/10" />
+        <Users className="absolute top-20 right-20 w-24 h-24 md:w-32 md:h-32 text-brand-primary/10" />
+        <Activity className="absolute bottom-10 left-1/4 w-16 h-16 md:w-20 md:h-20 text-brand-primary/10" />
+        <Stethoscope className="absolute top-1/3 left-10 w-12 h-12 md:w-16 md:h-16 text-brand-primary/10 hidden md:block" />
+        <Clock className="absolute bottom-20 right-10 w-20 h-20 md:w-28 md:h-28 text-brand-primary/10 hidden md:block" />
+        <HeartPulse className="absolute top-1/2 right-1/4 w-10 h-10 md:w-12 md:h-12 text-brand-primary/10 hidden md:block" />
+        <LayoutGrid className="absolute bottom-1/3 left-20 w-20 h-20 md:w-24 md:h-24 text-brand-primary/10 hidden md:block" />
 
         {/* More scattered icons for density */}
-        <Calendar className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 text-brand-primary/5" />
+        <Calendar className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 md:w-96 md:h-96 text-brand-primary/5" />
       </div>
 
-      <div className="max-w-md w-full space-y-8 bg-white/90 backdrop-blur-sm p-10 rounded-2xl shadow-2xl relative z-10 border border-white/50">
+      <div className="max-w-md w-full space-y-6 md:space-y-8 bg-white/90 backdrop-blur-sm p-6 md:p-10 rounded-2xl shadow-2xl relative z-10 border border-white/50">
         <div className="text-center">
-          <div className="text-sm font-black text-brand-primary uppercase tracking-[0.2em] mb-1">
+          <div className="text-xs md:text-sm font-black text-brand-primary uppercase tracking-[0.2em] mb-1">
             Boa Saúde
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
             Mapa de Salas
           </h2>
-          <div className="h-1 w-16 bg-brand-primary mx-auto mt-4 rounded-full"></div>
+          <div className="h-1 w-12 md:w-16 bg-brand-primary mx-auto mt-4 rounded-full"></div>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
-export default function RequireAuth({ children }: { children: JSX.Element }) {
+export default function RequireAuth({ children }: { children: React.ReactElement }) {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
   const location = useLocation();
 

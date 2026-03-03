@@ -25,11 +25,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <div className="flex h-full">
-              <div className="flex-shrink-0 flex items-center">
-                <span className="text-xl font-bold text-brand-primary">Mapa de Salas</span>
+            <div className="flex h-full items-center">
+              <div className="flex-shrink-0 flex items-center mr-4">
+                <span className="text-lg md:text-xl font-bold text-brand-primary whitespace-nowrap">Mapa de Salas</span>
               </div>
-              <nav className="ml-8 flex space-x-8">
+              <nav className="flex space-x-2 md:space-x-8 h-full">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = location.pathname === tab.path;
@@ -41,11 +41,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         isActive
                           ? 'border-brand-primary text-gray-900'
                           : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
-                        'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
+                        'inline-flex items-center px-2 md:px-1 pt-1 border-b-2 text-sm font-medium transition-all'
                       )}
                     >
-                      <Icon className="w-4 h-4 mr-2" />
-                      {tab.name}
+                      <Icon className="w-5 h-5 md:w-4 md:h-4" />
+                      <span className="hidden sm:inline ml-2">{tab.name}</span>
                     </Link>
                   );
                 })}
@@ -54,11 +54,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center">
               <button
                 onClick={handleLogout}
-                className="flex items-center text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
+                className="flex items-center text-sm font-medium text-red-500 hover:text-red-700 transition-colors p-2"
                 title="Sair do sistema"
               >
-                <LogOut className="w-4 h-4 mr-1.5" />
-                Sair
+                <LogOut className="w-5 h-5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline ml-1.5">Sair</span>
               </button>
             </div>
           </div>

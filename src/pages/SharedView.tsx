@@ -97,18 +97,18 @@ export default function SharedView() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans print:bg-white print:p-0">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div className="flex justify-between items-start mb-8 print:mb-4">
-          <div className="w-full md:w-auto">
+    <div className="min-h-screen bg-gray-50 p-2 md:p-8 font-sans print:bg-white print:p-0">
+      <div className="max-w-5xl mx-auto space-y-4 md:space-y-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-8 print:mb-4 gap-4">
+          <div className="w-full md:w-auto transform scale-90 md:scale-100 origin-center md:origin-left">
             <PrintHeader startDate={weekDays[0].formattedDate} endDate={weekDays[5].formattedDate} />
           </div>
           <button
             onClick={() => window.print()}
-            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded shadow-sm hover:bg-gray-50 flex items-center no-print"
+            className="w-full md:w-auto bg-white border border-gray-200 text-gray-700 px-6 py-3 rounded-xl shadow-sm hover:bg-gray-50 flex items-center justify-center no-print font-bold text-sm transition-all active:scale-95"
           >
             <Printer className="w-4 h-4 mr-2" />
-            Imprimir
+            Imprimir Mapa
           </button>
         </div>
 
