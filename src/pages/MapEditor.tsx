@@ -5,6 +5,7 @@ import { Doctor, Room, Schedule } from '../types';
 import { Share2, Trash2, Plus, CheckSquare, Square, X, Printer, Link, Copy, Check, ExternalLink } from 'lucide-react';
 import ScheduleTable from '../components/ScheduleTable';
 import PrintHeader from '../components/PrintHeader';
+import { supabase } from '../../supabase';
 
 export default function MapEditor() {
   const [selectedDate, setSelectedDate] = useState(format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
@@ -73,63 +74,105 @@ export default function MapEditor() {
   }, [selectedDate]);
 
   const fetchDoctors = async () => {
-    const res = await fetch('/api/doctors');
-    setDoctors(await res.json());
+    const { data, error } = await supabase.from('doctors').select('*');
+    if (!error) setDoctors(data || []);
   };
 
   const fetchRooms = async () => {
-    const res = await fetch('/api/rooms');
-    const data = await res.json();
-    // Sort rooms naturally (e.g., Sala 1, Sala 2, Sala 10)
-    const sortedRooms = data.sort((a: Room, b: Room) =>
-      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-    );
-    setRooms(sortedRooms);
+    const { data, error } = await supabase.from('rooms').select('*');
+    if (!error && data) {
+      // Sort rooms naturally (e.g., Sala 1, Sala 2, Sala 10)
+      const sortedRooms = data.sort((a: Room, b: Room) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+      );
+      setRooms(sortedRooms);
+    }
   };
 
   const fetchSchedules = async () => {
-    const res = await fetch(`/api/schedules?week_start_date=${selectedDate}`);
-    const data = await res.json() as any;
-    setSchedules(data.schedules);
-    setDisabledDays(data.disabledDays);
+    // Fetch schedules with joins
+    const { data: schedulesData, error: scheduleError } = await supabase
+      .from('schedules')
+      .select(`
+        id,
+        week_start_date,
+        day_of_week,
+        shift,
+        time_slot,
+        room:rooms(name, type),
+        doctor:doctors(name, specialty)
+      `)
+      .eq('week_start_date', selectedDate);
+
+    if (scheduleError) {
+      console.error('Error fetching schedules:', scheduleError);
+      return;
+    }
+
+    const formattedSchedules = (schedulesData || []).map(s => {
+      const room = (s as any).room || { name: 'Sala Removida', type: 'N/A' };
+      const doctor = (s as any).doctor || { name: 'Médico Removido', specialty: 'N/A' };
+
+      return {
+        ...s,
+        room_name: room.name,
+        room_type: room.type,
+        doctor_name: doctor.name,
+        doctor_specialty: doctor.specialty
+      };
+    });
+
+    // Fetch disabled days
+    const { data: disabledDaysData, error: disabledError } = await supabase
+      .from('disabled_days')
+      .select('day_of_week')
+      .eq('week_start_date', selectedDate);
+
+    if (disabledError) {
+      console.error('Error fetching disabled days:', disabledError);
+    }
+
+    setSchedules(formattedSchedules as any);
+    setDisabledDays((disabledDaysData || []).map(d => d.day_of_week));
   };
 
   const handleAddSchedule = async () => {
     if (!selectedRoom || !selectedDoctor) return;
 
-    await fetch('/api/schedules', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const { error } = await supabase
+      .from('schedules')
+      .insert([{
         week_start_date: selectedDate,
         day_of_week: selectedDay,
         room_id: selectedRoom,
         doctor_id: selectedDoctor,
         shift: selectedShift,
         time_slot: `${startTime} - ${endTime}`,
-      }),
-    });
+      }]);
 
-    fetchSchedules();
+    if (!error) fetchSchedules();
+    else console.error('Error adding schedule:', error);
   };
 
   const handleDeleteSchedule = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta alocacao?')) return;
-    await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
-    fetchSchedules();
+    const { error } = await supabase.from('schedules').delete().eq('id', id);
+    if (!error) fetchSchedules();
   };
 
   const toggleDayDisabled = async (dayIndex: number) => {
     const isDisabled = disabledDays.includes(dayIndex);
-    await fetch('/api/disabled-days', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        week_start_date: selectedDate,
-        day_of_week: dayIndex,
-        disabled: !isDisabled,
-      }),
-    });
+    if (!isDisabled) {
+      await supabase
+        .from('disabled_days')
+        .upsert({ week_start_date: selectedDate, day_of_week: dayIndex }, { onConflict: 'week_start_date,day_of_week' });
+    } else {
+      await supabase
+        .from('disabled_days')
+        .delete()
+        .eq('week_start_date', selectedDate)
+        .eq('day_of_week', dayIndex);
+    }
     fetchSchedules();
   };
 
@@ -152,7 +195,9 @@ export default function MapEditor() {
     if (!pendingDate) return;
     setIsClearing(true);
     try {
-      await fetch(`/api/week/${selectedDate}`, { method: 'DELETE' });
+      // Clear schedules and disabled days for the current week
+      await supabase.from('schedules').delete().eq('week_start_date', selectedDate);
+      await supabase.from('disabled_days').delete().eq('week_start_date', selectedDate);
     } catch (err) {
       console.error('Error clearing week:', err);
     } finally {
@@ -162,6 +207,7 @@ export default function MapEditor() {
       setIsClearing(false);
     }
   };
+
 
   const handleCancelClear = () => {
     setPendingDate(null);

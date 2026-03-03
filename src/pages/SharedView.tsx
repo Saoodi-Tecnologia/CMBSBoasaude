@@ -6,6 +6,7 @@ import { Schedule } from '../types';
 import { Printer } from 'lucide-react';
 import ScheduleTable from '../components/ScheduleTable';
 import PrintHeader from '../components/PrintHeader';
+import { supabase } from '../../supabase';
 
 export default function SharedView() {
   const [searchParams] = useSearchParams();
@@ -24,11 +25,45 @@ export default function SharedView() {
 
     const fetchSchedules = async () => {
       try {
-        const res = await fetch(`/api/schedules?week_start_date=${weekParam}`);
-        if (!res.ok) throw new Error('Failed to fetch');
-        const data = await res.json();
-        setSchedules(data.schedules);
-        setDisabledDays(data.disabledDays);
+        // Fetch schedules with joins
+        const { data: schedulesData, error: scheduleError } = await supabase
+          .from('schedules')
+          .select(`
+            id,
+            week_start_date,
+            day_of_week,
+            shift,
+            time_slot,
+            room:rooms(name, type),
+            doctor:doctors(name, specialty)
+          `)
+          .eq('week_start_date', weekParam);
+
+        if (scheduleError) throw scheduleError;
+
+        const formattedSchedules = (schedulesData || []).map(s => {
+          const room = (s as any).room || { name: 'Sala Removida', type: 'N/A' };
+          const doctor = (s as any).doctor || { name: 'Médico Removido', specialty: 'N/A' };
+
+          return {
+            ...s,
+            room_name: room.name,
+            room_type: room.type,
+            doctor_name: doctor.name,
+            doctor_specialty: doctor.specialty
+          };
+        });
+
+        // Fetch disabled days
+        const { data: disabledDaysData, error: disabledError } = await supabase
+          .from('disabled_days')
+          .select('day_of_week')
+          .eq('week_start_date', weekParam);
+
+        if (disabledError) throw disabledError;
+
+        setSchedules(formattedSchedules as any);
+        setDisabledDays((disabledDaysData || []).map(d => d.day_of_week));
       } catch (error) {
         console.error('Failed to fetch schedules', error);
       } finally {
@@ -40,6 +75,7 @@ export default function SharedView() {
     const interval = setInterval(fetchSchedules, 10000); // Poll every 10 seconds
     return () => clearInterval(interval);
   }, [weekParam, navigate]);
+
 
   if (!weekParam) {
     return <div className="p-8 text-center">Redirecionando para a semana atual...</div>;

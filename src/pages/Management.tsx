@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Doctor, Room } from '../types';
 import { Trash2, Edit2, Plus, Save, X, Users, LayoutGrid } from 'lucide-react';
+import { supabase } from '../../supabase';
 
 export default function Management() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -22,31 +23,36 @@ export default function Management() {
   }, []);
 
   const fetchDoctors = async () => {
-    const res = await fetch('/api/doctors');
-    setDoctors(await res.json());
+    const { data, error } = await supabase.from('doctors').select('*');
+    if (!error) setDoctors(data || []);
   };
 
   const fetchRooms = async () => {
-    const res = await fetch('/api/rooms');
-    const data = await res.json();
-    // Sort rooms naturally (e.g., Sala 1, Sala 2, Sala 10)
-    const sortedRooms = data.sort((a: Room, b: Room) =>
-      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-    );
-    setRooms(sortedRooms);
+    const { data, error } = await supabase.from('rooms').select('*');
+    if (!error && data) {
+      // Sort rooms naturally (e.g., Sala 1, Sala 2, Sala 10)
+      const sortedRooms = data.sort((a: Room, b: Room) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+      );
+      setRooms(sortedRooms);
+    }
   };
 
   const handleSaveDoctor = async () => {
     if (!docName || !docSpecialty) return;
 
-    const method = editingDoctor ? 'PUT' : 'POST';
-    const url = editingDoctor ? `/api/doctors/${editingDoctor.id}` : '/api/doctors';
-
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: docName, specialty: docSpecialty }),
-    });
+    if (editingDoctor) {
+      const { error } = await supabase
+        .from('doctors')
+        .update({ name: docName, specialty: docSpecialty })
+        .eq('id', editingDoctor.id);
+      if (error) console.error(error);
+    } else {
+      const { error } = await supabase
+        .from('doctors')
+        .insert([{ name: docName, specialty: docSpecialty }]);
+      if (error) console.error(error);
+    }
 
     setEditingDoctor(null);
     setDocName('');
@@ -56,21 +62,25 @@ export default function Management() {
 
   const handleDeleteDoctor = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este medico?')) return;
-    await fetch(`/api/doctors/${id}`, { method: 'DELETE' });
-    fetchDoctors();
+    const { error } = await supabase.from('doctors').delete().eq('id', id);
+    if (!error) fetchDoctors();
   };
 
   const handleSaveRoom = async () => {
     if (!roomName) return;
 
-    const method = editingRoom ? 'PUT' : 'POST';
-    const url = editingRoom ? `/api/rooms/${editingRoom.id}` : '/api/rooms';
-
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: roomName, type: roomType }),
-    });
+    if (editingRoom) {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ name: roomName, type: roomType })
+        .eq('id', editingRoom.id);
+      if (error) console.error(error);
+    } else {
+      const { error } = await supabase
+        .from('rooms')
+        .insert([{ name: roomName, type: roomType }]);
+      if (error) console.error(error);
+    }
 
     setEditingRoom(null);
     setRoomName('');
@@ -80,9 +90,10 @@ export default function Management() {
 
   const handleDeleteRoom = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta sala?')) return;
-    await fetch(`/api/rooms/${id}`, { method: 'DELETE' });
-    fetchRooms();
+    const { error } = await supabase.from('rooms').delete().eq('id', id);
+    if (!error) fetchRooms();
   };
+
 
   return (
     <div className="space-y-8">
