@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -11,6 +6,8 @@ import Management from './pages/Management';
 import SharedView from './pages/SharedView';
 import Login from './pages/Login';
 import RequireAuth from './components/RequireAuth';
+import MonthlyManagement from './pages/MonthlyManagement';
+import MonthlyShare from './pages/MonthlyShare';
 
 export default function App() {
   return (
@@ -37,9 +34,21 @@ export default function App() {
             </RequireAuth>
           }
         />
+        <Route
+          path="/monthly"
+          element={
+            <RequireAuth>
+              <Layout>
+                <MonthlyManagement />
+              </Layout>
+            </RequireAuth>
+          }
+        />
         <Route path="/share" element={<SharedView />} />
+        <Route path="/share-monthly" element={<MonthlyShare />} />
       </Routes>
     </BrowserRouter>
   );
 }
+
 

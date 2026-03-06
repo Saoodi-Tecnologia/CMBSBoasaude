@@ -8,7 +8,7 @@ export interface Room {
   id: string;
   name: string;
   color: string;
-  type: 'Gine/Obst' | 'General';
+  type: 'Gine/Obst' | 'General' | 'Pediatria';
 }
 
 export interface Schedule {
@@ -29,4 +29,17 @@ export interface Schedule {
 export interface WeekConfig {
   startDate: Date;
   disabledDays: number[];
+}
+
+export interface MonthlyAllocation {
+  id: string;
+  date: string;
+  room_id: string;
+  doctor_id: string;
+  shift: string;
+  room_name?: string;
+  room_color?: string;
+  room_type?: string;
+  doctor_name?: string;
+  doctor_specialty?: string;
 }

@@ -106,7 +106,7 @@ export default function MapEditor() {
           />
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="w-full sm:w-auto bg-brand-primary text-white px-4 py-2 rounded hover:opacity-90 flex items-center justify-center"
+            className="w-full sm:w-auto bg-brand-primary text-white px-6 py-3 rounded-xl hover:opacity-90 flex items-center justify-center transition-all font-bold text-sm shadow-lg shadow-brand-primary/20"
           >
             <Share2 className="w-4 h-4 mr-2" />
             Compartilhar

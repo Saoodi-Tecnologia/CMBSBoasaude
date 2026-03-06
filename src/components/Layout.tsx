@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, Users, LogOut } from 'lucide-react';
+import { Calendar, Users, LogOut, CalendarDays } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,6 +17,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const tabs = [
     { name: 'Mapa', path: '/', icon: Calendar },
+    { name: 'Mapa Mensal', path: '/monthly', icon: CalendarDays },
     { name: 'Cadastros', path: '/management', icon: Users },
   ];
 
