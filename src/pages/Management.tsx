@@ -24,11 +24,11 @@ export default function Management() {
   const [roomName, setRoomName] = useState('');
   const [roomType, setRoomType] = useState<Room['type']>('General');
 
-  // New states for tabs and pagination
+  // New states for tabs, pagination and rows per page
   const [activeTab, setActiveTab] = useState<'doctors' | 'rooms'>('doctors');
   const [docPage, setDocPage] = useState(1);
   const [roomPage, setRoomPage] = useState(1);
-  const rowsPerPage = 10;
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const validDocPage = Math.min(docPage, Math.ceil(doctors.length / rowsPerPage) || 1);
   const paginatedDoctors = doctors.slice((validDocPage - 1) * rowsPerPage, validDocPage * rowsPerPage);
@@ -86,7 +86,9 @@ export default function Management() {
     totalItems: number,
     currentPage: number,
     totalPages: number,
-    setPage: (p: number) => void
+    setPage: (p: number) => void,
+    rowsPerPage: number,
+    setRowsPerPage: (n: number) => void
   ) => {
     return (
       <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 border-t border-gray-100 bg-white gap-4">
@@ -96,8 +98,18 @@ export default function Management() {
         <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm text-gray-600 font-medium">
           <div className="flex items-center gap-2">
             <span>Linhas por página:</span>
-            <select className="border border-gray-200 rounded p-1 outline-none bg-gray-50/50" disabled>
-              <option>10</option>
+            <select
+              className="border border-gray-200 rounded p-1 outline-none bg-white cursor-pointer hover:border-brand-primary/50 transition-colors"
+              value={rowsPerPage}
+              onChange={(e) => {
+                setRowsPerPage(Number(e.target.value));
+                setPage(1); // Reset to first page when changing rows per page
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
             </select>
           </div>
           <div>
@@ -211,7 +223,7 @@ export default function Management() {
                 </tbody>
               </table>
             </div>
-            {doctors.length > 0 && renderPagination(doctors.length, validDocPage, totalDocPages, setDocPage)}
+            {doctors.length > 0 && renderPagination(doctors.length, validDocPage, totalDocPages, setDocPage, rowsPerPage, setRowsPerPage)}
           </div>
         </section>
       )}
@@ -295,7 +307,7 @@ export default function Management() {
                 </tbody>
               </table>
             </div>
-            {rooms.length > 0 && renderPagination(rooms.length, validRoomPage, totalRoomPages, setRoomPage)}
+            {rooms.length > 0 && renderPagination(rooms.length, validRoomPage, totalRoomPages, setRoomPage, rowsPerPage, setRowsPerPage)}
           </div>
         </section>
       )}
