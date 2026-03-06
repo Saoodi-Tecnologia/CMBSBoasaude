@@ -6,6 +6,7 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Share2, Plus, Tras
 
 import MonthlyHeader from '../components/monthly/MonthlyHeader';
 import MonthlyDashboard from '../components/monthly/MonthlyDashboard';
+import { supabase } from '../../supabase';
 
 export default function MonthlyManagement() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -141,31 +142,25 @@ export default function MonthlyManagement() {
   }, []);
 
   const handleInterdiction = async (date: string, roomId: string, shift: string, existingAlloc: MonthlyAllocation | undefined) => {
-    if (existingAlloc) {
-      const isCurrentlyInterdicted = !existingAlloc.doctor_id;
-      if (isCurrentlyInterdicted) {
-        // Remove Interdiction
-        await fetch(`/api/monthly-allocations/${existingAlloc.id}`, { method: 'DELETE' });
-        setSuccess('Interdição removida.');
+    try {
+      if (existingAlloc) {
+        const isCurrentlyInterdicted = !existingAlloc.doctor_id;
+        if (isCurrentlyInterdicted) {
+          await supabase.from('monthly_allocations').delete().eq('id', existingAlloc.id);
+          setSuccess('Interdição removida.');
+        } else {
+          await supabase.from('monthly_allocations').update({ doctor_id: null }).eq('id', existingAlloc.id);
+          setSuccess('Turno interditado.');
+        }
       } else {
-        // Overwrite existing allocation with Interdiction
-        await fetch(`/api/monthly-allocations/${existingAlloc.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ doctor_id: 'INTERDITADO' })
-        });
+        await supabase.from('monthly_allocations').insert([{ date, room_id: roomId, shift, doctor_id: null }]);
         setSuccess('Turno interditado.');
       }
-    } else {
-      // Create Interdiction - send 'INTERDITADO' so server converts to null
-      await fetch('/api/monthly-allocations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, room_id: roomId, shift, doctor_id: 'INTERDITADO' })
-      });
-      setSuccess('Turno interditado.');
+      fetchAllocations();
+    } catch (err) {
+      console.error(err);
+      setError('Erro ao interditar.');
     }
-    fetchAllocations();
   };
 
   useEffect(() => {
@@ -177,28 +172,53 @@ export default function MonthlyManagement() {
   }, [currentDate]);
 
   const fetchInitialData = async () => {
-    const [roomsRes, doctorsRes] = await Promise.all([
-      fetch('/api/rooms'),
-      fetch('/api/doctors')
-    ]);
-    const roomsData = await roomsRes.json();
-    const doctorsData = await doctorsRes.json();
+    const { data: roomsData, error: roomsError } = await supabase.from('rooms').select('*');
+    if (roomsError) console.error(roomsError);
 
-    const sortedRooms = roomsData.sort((a: Room, b: Room) =>
+    const { data: doctorsData, error: doctorsError } = await supabase.from('doctors').select('*');
+    if (doctorsError) console.error(doctorsError);
+
+    const sortedRooms = (roomsData || []).sort((a: Room, b: Room) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     );
 
     setRooms(sortedRooms);
-    setDoctors(doctorsData);
+    setDoctors(doctorsData || []);
   };
 
   const fetchAllocations = async () => {
     setLoading(true);
     const month = currentDate.getMonth() + 1;
     const year = currentDate.getFullYear();
-    const res = await fetch(`/api/monthly-allocations?month=${month}&year=${year}`);
-    const data = await res.json();
-    setAllocations(data);
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+
+    const { data, error } = await supabase
+      .from('monthly_allocations')
+      .select(`
+        *,
+        room:rooms(name, color, type),
+        doctor:doctors(name, specialty)
+      `)
+      .gte('date', startDate)
+      .lte('date', endDate);
+
+    if (error) {
+      console.error(error);
+      setLoading(false);
+      return;
+    }
+
+    const formatted = (data || []).map((m: any) => ({
+      ...m,
+      room_name: m.room?.name,
+      room_color: m.room?.color,
+      room_type: m.room?.type,
+      doctor_name: m.doctor?.name,
+      doctor_specialty: m.doctor?.specialty
+    }));
+
+    setAllocations(formatted);
     setLoading(false);
   };
 
@@ -228,6 +248,20 @@ export default function MonthlyManagement() {
 
   const currentWeekDays = weeks[currentWeekIndex] || [];
 
+  const checkConflict = async (date: string, roomId: string, shift: string, ignoreId?: string) => {
+    let conflictShifts = [];
+    if (shift === 'MANHÃ/TARDE') conflictShifts = ['MANHÃ', 'TARDE', 'MANHÃ/TARDE'];
+    else if (shift === 'MANHÃ') conflictShifts = ['MANHÃ', 'MANHÃ/TARDE'];
+    else if (shift === 'TARDE') conflictShifts = ['TARDE', 'MANHÃ/TARDE'];
+    else conflictShifts = [shift, 'MANHÃ/TARDE'];
+
+    let query = supabase.from('monthly_allocations').select('id').eq('date', date).eq('room_id', roomId).in('shift', conflictShifts);
+    if (ignoreId) query = query.neq('id', ignoreId);
+
+    const { data } = await query;
+    return (data && data.length > 0);
+  };
+
   const handleAddAllocation = async () => {
     if (selectedDays.length === 0 || !selectedRoom || !selectedDoctor) return;
     setError('');
@@ -237,18 +271,20 @@ export default function MonthlyManagement() {
     let errorCount = 0;
 
     for (const day of selectedDays) {
-      const res = await fetch('/api/monthly-allocations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: day,
-          room_id: selectedRoom,
-          doctor_id: selectedDoctor,
-          shift: selectedShift
-        })
-      });
+      const hasConflict = await checkConflict(day, selectedRoom, selectedShift);
+      if (hasConflict) {
+        errorCount++;
+        continue;
+      }
 
-      if (res.ok) {
+      const { error } = await supabase.from('monthly_allocations').insert([{
+        date: day,
+        room_id: selectedRoom,
+        doctor_id: selectedDoctor,
+        shift: selectedShift
+      }]);
+
+      if (!error) {
         successCount++;
       } else {
         errorCount++;
@@ -270,27 +306,26 @@ export default function MonthlyManagement() {
   const handleQuickSelect = async (doctorId: string) => {
     if (!quickSelectContext) return;
 
-    const res = await fetch('/api/monthly-allocations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date: quickSelectContext.date,
-        room_id: quickSelectContext.roomId,
-        doctor_id: doctorId,
-        shift: quickSelectContext.shift
-      })
-    });
-
-    if (res.status === 409) {
+    const hasConflict = await checkConflict(quickSelectContext.date, quickSelectContext.roomId, quickSelectContext.shift);
+    if (hasConflict) {
       setError('Esta sala já está ocupada neste dia e turno.');
       return;
     }
 
-    if (res.ok) {
+    const { error } = await supabase.from('monthly_allocations').insert([{
+      date: quickSelectContext.date,
+      room_id: quickSelectContext.roomId,
+      doctor_id: doctorId,
+      shift: quickSelectContext.shift
+    }]);
+
+    if (!error) {
       fetchAllocations();
       setQuickSelectContext(null);
       setQuickSearchTerm('');
       setSuccess('Alocação realizada com sucesso!');
+    } else {
+      setError('Erro ao realizar alocação.');
     }
   };
 
@@ -302,7 +337,7 @@ export default function MonthlyManagement() {
 
   const executeDeleteAllocation = async () => {
     if (!confirmDeleteState) return;
-    await fetch(`/api/monthly-allocations/${confirmDeleteState.id}`, { method: 'DELETE' });
+    await supabase.from('monthly_allocations').delete().eq('id', confirmDeleteState.id);
     fetchAllocations();
     setConfirmDeleteState(null);
     setSuccess('Alocação removida com sucesso!');
@@ -311,17 +346,15 @@ export default function MonthlyManagement() {
   const handleSwapDoctor = async (targetDoctorId: string) => {
     if (!swappingAlloc) return;
 
-    const res = await fetch(`/api/monthly-allocations/${swappingAlloc.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doctor_id: targetDoctorId })
-    });
+    const { error } = await supabase.from('monthly_allocations').update({ doctor_id: targetDoctorId }).eq('id', swappingAlloc.id);
 
-    if (res.ok) {
+    if (!error) {
       fetchAllocations();
       setSwappingAlloc(null);
       setSwapSearchTerm('');
       setSuccess('Médico(a) trocado(a) com sucesso!');
+    } else {
+      setError('Erro ao trocar médico.');
     }
   };
 
@@ -334,40 +367,41 @@ export default function MonthlyManagement() {
       return;
     }
 
-    if (isCopy) {
-      const res = await fetch('/api/monthly-allocations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date,
-          room_id: roomId,
-          doctor_id: draggedAlloc.doctor_id,
-          shift
-        })
-      });
+    const ignoreId = isCopy ? undefined : draggedAlloc.id;
+    const hasConflict = await checkConflict(date, roomId, shift, ignoreId);
 
-      if (res.ok) {
+    if (hasConflict) {
+      setError('O destino já possui uma alocação neste turno.');
+      setDraggedAlloc(null);
+      return;
+    }
+
+    if (isCopy) {
+      const { error } = await supabase.from('monthly_allocations').insert([{
+        date,
+        room_id: roomId,
+        doctor_id: draggedAlloc.doctor_id,
+        shift
+      }]);
+
+      if (!error) {
         fetchAllocations();
         setSuccess('Alocação copiada com sucesso!');
-      } else if (res.status === 409) {
-        setError('O destino já possui uma alocação neste turno.');
+      } else {
+        setError('Erro ao copiar alocação.');
       }
     } else {
-      const res = await fetch(`/api/monthly-allocations/${draggedAlloc.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date,
-          room_id: roomId,
-          shift
-        })
-      });
+      const { error } = await supabase.from('monthly_allocations').update({
+        date,
+        room_id: roomId,
+        shift
+      }).eq('id', draggedAlloc.id);
 
-      if (res.ok) {
+      if (!error) {
         fetchAllocations();
         setSuccess('Alocação movida com sucesso!');
-      } else if (res.status === 409) {
-        setError('O destino já possui uma alocação neste turno.');
+      } else {
+        setError('Erro ao mover alocação.');
       }
     }
 
@@ -412,21 +446,29 @@ export default function MonthlyManagement() {
     console.log(`Prepared ${newAllocations.length} new allocations for bulk insert`);
 
     try {
-      const res = await fetch('/api/monthly-allocations/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ allocations: newAllocations })
-      });
+      let processed = 0;
+      for (const item of newAllocations) {
+        if (!item.doctor_id) continue;
 
-      const data = await res.json();
-      console.log('Bulk replication response:', data);
+        let conflictShifts = [];
+        if (item.shift === 'MANHÃ/TARDE') conflictShifts = ['MANHÃ', 'TARDE', 'MANHÃ/TARDE'];
+        else if (item.shift === 'MANHÃ') conflictShifts = ['MANHÃ', 'MANHÃ/TARDE'];
+        else if (item.shift === 'TARDE') conflictShifts = ['TARDE', 'MANHÃ/TARDE'];
+        else conflictShifts = [item.shift, 'MANHÃ/TARDE'];
 
-      if (res.ok) {
-        setSuccess('Escala replicada com sucesso para o mês inteiro!');
-        fetchAllocations();
-      } else {
-        setError('Erro ao replicar escala.');
+        await supabase
+          .from('monthly_allocations')
+          .delete()
+          .eq('date', item.date)
+          .eq('room_id', item.room_id)
+          .in('shift', conflictShifts);
+
+        await supabase.from('monthly_allocations').insert([item]);
+        processed++;
       }
+
+      setSuccess('Escala replicada com sucesso para o mês inteiro!');
+      fetchAllocations();
     } catch (err) {
       console.error('Error replicating:', err);
       setError('Erro de conexão ao replicar escala.');
@@ -440,22 +482,60 @@ export default function MonthlyManagement() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/monthly-allocations/sync-from-weekly', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          month: currentDate.getMonth() + 1,
-          year: currentDate.getFullYear()
-        })
-      });
+      const getMonday = (d: Date) => {
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
+        monday.setHours(12, 0, 0, 0);
+        return monday.toISOString().split('T')[0];
+      };
 
-      if (res.ok) {
-        const data = await res.json();
-        setSuccess(`${data.added} alocações importadas com sucesso!`);
-        fetchAllocations();
-      } else {
-        setError('Erro ao sincronizar escala.');
+      const month = currentDate.getMonth() + 1;
+      const year = currentDate.getFullYear();
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+
+      const daysToProcess = [];
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        if (d.getDay() !== 0) daysToProcess.push(new Date(d));
       }
+
+      let addedCount = 0;
+      for (const dateObj of daysToProcess) {
+        const dateStr = dateObj.toISOString().split('T')[0];
+        const weekStartDate = getMonday(new Date(dateObj));
+        const dayOfWeek = dateObj.getDay();
+
+        const { data: schedules } = await supabase
+          .from('schedules')
+          .select('*')
+          .eq('week_start_date', weekStartDate)
+          .eq('day_of_week', dayOfWeek);
+
+        if (!schedules) continue;
+
+        for (const sch of schedules) {
+          if (!sch.doctor_id) continue;
+
+          const { data: existing } = await supabase
+            .from('monthly_allocations')
+            .select('id')
+            .eq('date', dateStr)
+            .eq('room_id', sch.room_id)
+            .eq('shift', sch.shift)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from('monthly_allocations').insert([{
+              date: dateStr, room_id: sch.room_id, doctor_id: sch.doctor_id, shift: sch.shift
+            }]);
+            addedCount++;
+          }
+        }
+      }
+
+      setSuccess(`${addedCount} alocações importadas com sucesso!`);
+      fetchAllocations();
     } catch (err) {
       setError('Erro de conexão.');
     } finally {
@@ -468,16 +548,18 @@ export default function MonthlyManagement() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/monthly-allocations/clear', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          month: currentDate.getMonth() + 1,
-          year: currentDate.getFullYear()
-        })
-      });
+      const month = currentDate.getMonth() + 1;
+      const year = currentDate.getFullYear();
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
-      if (res.ok) {
+      const { error } = await supabase
+        .from('monthly_allocations')
+        .delete()
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      if (!error) {
         setSuccess('Mês limpo com sucesso!');
         fetchAllocations();
       } else {
@@ -507,40 +589,48 @@ export default function MonthlyManagement() {
 
     setLoading(true);
     try {
+      const fromMonth = currentDate.getMonth() + 1;
+      const fromYear = currentDate.getFullYear();
+      const fromStartDate = `${fromYear}-${String(fromMonth).padStart(2, '0')}-01`;
+      const fromEndDate = `${fromYear}-${String(fromMonth).padStart(2, '0')}-31`;
+
       if (action === 'copy_and_clear') {
-        // 1. Copy to new month
-        await fetch('/api/monthly-allocations/copy-month', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fromMonth: currentDate.getMonth() + 1,
-            fromYear: currentDate.getFullYear(),
-            toMonth: pendingMonthChange.getMonth() + 1,
-            toYear: pendingMonthChange.getFullYear()
-          })
-        });
+        const toMonth = pendingMonthChange.getMonth() + 1;
+        const toYear = pendingMonthChange.getFullYear();
 
-        // 2. Clear current month
-        await fetch('/api/monthly-allocations/clear', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            month: currentDate.getMonth() + 1,
-            year: currentDate.getFullYear()
-          })
-        });
+        // 1. Fetch current month allocations
+        const { data: allocationsToCopy } = await supabase
+          .from('monthly_allocations')
+          .select('*')
+          .gte('date', fromStartDate)
+          .lte('date', fromEndDate);
 
+        // 2. Copy them to the next month
+        if (allocationsToCopy && allocationsToCopy.length > 0) {
+          for (const alloc of allocationsToCopy) {
+            const parts = alloc.date.split('-');
+            if (parts.length === 3) {
+              const d = parseInt(parts[2]);
+              const targetDateObj = new Date(toYear, toMonth - 1, d);
+              if (targetDateObj.getMonth() === toMonth - 1) { // valid matching date
+                const targetDateStr = `${toYear}-${String(toMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                await supabase.from('monthly_allocations').insert([{
+                  date: targetDateStr,
+                  room_id: alloc.room_id,
+                  doctor_id: alloc.doctor_id,
+                  shift: alloc.shift
+                }]);
+              }
+            }
+          }
+        }
+
+        // 3. Delete old month allocations
+        await supabase.from('monthly_allocations').delete().gte('date', fromStartDate).lte('date', fromEndDate);
         setSuccess('Alocações copiadas e mês anterior limpo!');
       } else if (action === 'clear_only') {
         // Just clear current month
-        await fetch('/api/monthly-allocations/clear', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            month: currentDate.getMonth() + 1,
-            year: currentDate.getFullYear()
-          })
-        });
+        await supabase.from('monthly_allocations').delete().gte('date', fromStartDate).lte('date', fromEndDate);
         setSuccess('Mês anterior limpo!');
       }
 
