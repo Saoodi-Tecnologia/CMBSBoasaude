@@ -6,6 +6,7 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Share2, Plus, Tras
 
 import MonthlyHeader from '../components/monthly/MonthlyHeader';
 import MonthlyDashboard from '../components/monthly/MonthlyDashboard';
+import ShareModal from '../components/modals/ShareModal';
 import { supabase } from '../../supabase';
 
 export default function MonthlyManagement() {
@@ -1312,83 +1313,12 @@ export default function MonthlyManagement() {
         </>
       )}
 
-      {/* Share Modal */}
-      {isShareModalOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm"
-            onClick={() => setIsShareModalOpen(false)}
-          />
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-white border-b border-gray-100 px-5 md:px-6 py-4 flex justify-between items-center">
-              <h2 className="text-lg font-extrabold text-gray-900">Compartilhar Mapa</h2>
-              <button
-                onClick={() => setIsShareModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 md:p-6 space-y-5">
-              <div className="space-y-3">
-                <p className="text-sm font-bold text-gray-700 flex items-center">
-                  <Link className="w-4 h-4 mr-2 text-brand-primary" />
-                  Link público do mês ({format(currentDate, 'MMMM yyyy', { locale: ptBR })})
-                </p>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}/share-monthly?month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`}
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-xs text-gray-600 font-mono focus:outline-none"
-                    onFocus={(e) => e.target.select()}
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/share-monthly?month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`;
-                        navigator.clipboard.writeText(url);
-                        setSuccess('Link copiado para a área de transferência!');
-                        setIsShareModalOpen(false);
-                      }}
-                      title="Copiar link"
-                      className="flex-1 sm:flex-none p-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all flex items-center justify-center font-bold text-xs gap-2"
-                    >
-                      <Copy className="w-4 h-4" />
-                      <span className="sm:hidden">Copiar</span>
-                    </button>
-                    <a
-                      href={`/share-monthly?month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Abrir em nova aba"
-                      className="flex-1 sm:flex-none p-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all flex items-center justify-center font-bold text-xs gap-2"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span className="sm:hidden">Abrir</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-brand-secondary/10 border border-brand-secondary/20 rounded-xl p-4">
-                <p className="text-xs text-brand-secondary font-semibold leading-relaxed">
-                  Este link permite que qualquer pessoa visualize o cronograma mensal atualizado em tempo real sem precisar de senha.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 px-6 py-4 flex justify-end">
-              <button
-                onClick={() => setIsShareModalOpen(false)}
-                className="w-full md:w-auto px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        shareUrl={`${window.location.origin}/share-monthly?month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`}
+        type={`do mês (${format(currentDate, 'MMMM yyyy', { locale: ptBR })})`}
+      />
 
       {/* Floating Alerts */}
       <div className="fixed bottom-6 right-6 z-[150] flex flex-col gap-3 pointer-events-none">

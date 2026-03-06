@@ -5,9 +5,10 @@ interface ShareModalProps {
     isOpen: boolean;
     onClose: () => void;
     shareUrl: string;
+    type?: string;
 }
 
-export default function ShareModal({ isOpen, onClose, shareUrl }: ShareModalProps) {
+export default function ShareModal({ isOpen, onClose, shareUrl, type = 'da semana' }: ShareModalProps) {
     const [copied, setCopied] = useState(false);
 
     if (!isOpen) return null;
@@ -35,7 +36,7 @@ export default function ShareModal({ isOpen, onClose, shareUrl }: ShareModalProp
                     <div className="space-y-3">
                         <p className="text-sm font-bold text-gray-700 flex items-center">
                             <Link className="w-4 h-4 mr-2 text-brand-primary" />
-                            Link publico da semana
+                            Link público {type}
                         </p>
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             <input
@@ -50,8 +51,8 @@ export default function ShareModal({ isOpen, onClose, shareUrl }: ShareModalProp
                                     onClick={handleCopy}
                                     title="Copiar link"
                                     className={`flex-1 sm:flex-none p-3 rounded-xl transition-all flex items-center justify-center border ${copied
-                                            ? 'bg-brand-secondary/10 border-brand-secondary text-brand-secondary'
-                                            : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                        ? 'bg-brand-secondary/10 border-brand-secondary text-brand-secondary'
+                                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
                                         }`}
                                 >
                                     {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5 md:w-4 md:h-4" />}
