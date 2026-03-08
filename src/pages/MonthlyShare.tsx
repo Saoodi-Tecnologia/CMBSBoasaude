@@ -209,8 +209,8 @@ export default function MonthlyShare() {
                               isSameDoctorFullDay
                             );
 
-                            // If filtering by integral, and it's NOT integral, or there's NO allocation, hide it
-                            if (filterShift === 'MANHÃ/TARDE' && (!alloc || !isActuallyIntegral)) {
+                            // If filtering by integral, and it's NOT integral AND NOT interdicted, hide it
+                            if (filterShift === 'MANHÃ/TARDE' && (!alloc || (!isActuallyIntegral && !isInterdicted))) {
                               shouldHide = true;
                             }
 

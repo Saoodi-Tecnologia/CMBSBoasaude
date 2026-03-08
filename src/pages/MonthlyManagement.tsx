@@ -881,8 +881,8 @@ export default function MonthlyManagement() {
                                 const isBlue = !isInterdicted && (alloc?.shift === 'MANHÃ/TARDE' || isSameDoctorFullDay);
 
                                 // Filtro Integral(M/T): oculta apenas alocações que NÃO são integrais de nenhuma forma.
-                                // Mantém: vagas livres, alocações M/T e mesmo médico nos dois turnos (isBlue).
-                                if (filterShift === 'MANHÃ/TARDE' && alloc && !isBlue) return null;
+                                // Mantém: vagas livres, alocações M/T, mesmo médico nos dois turnos (isBlue) e INTERDITADOS.
+                                if (filterShift === 'MANHÃ/TARDE' && alloc && !isBlue && !isInterdicted) return null;
 
                                 return (
                                   <div
