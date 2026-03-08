@@ -6,6 +6,8 @@ const SCHEDULE_SELECT = `
   id,
   week_start_date,
   day_of_week,
+  room_id,
+  doctor_id,
   shift,
   time_slot,
   room:rooms(name, type),
@@ -91,6 +93,18 @@ export function useScheduleData(selectedDate: string) {
         else console.error('Error adding schedule:', error);
     };
 
+    const updateSchedule = async (id: string, payload: {
+        day_of_week: number;
+        room_id: string;
+        doctor_id: string;
+        shift: string;
+        time_slot: string;
+    }) => {
+        const { error } = await supabase.from('schedules').update(payload).eq('id', id);
+        if (!error) fetchSchedules();
+        else console.error('Error updating schedule:', error);
+    };
+
     const deleteSchedule = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir esta alocacao?')) return;
         const { error } = await supabase.from('schedules').delete().eq('id', id);
@@ -121,6 +135,36 @@ export function useScheduleData(selectedDate: string) {
         await supabase.from('disabled_days').delete().eq('week_start_date', weekDate);
     };
 
+    const copyWeek = async (targetWeekDate: string) => {
+        // Obter do BD para ter apenas o schema cru sem joins extra
+        const { data: rawSchedules } = await supabase.from('schedules').select('*').eq('week_start_date', selectedDate);
+        const { data: rawDisabled } = await supabase.from('disabled_days').select('*').eq('week_start_date', selectedDate);
+
+        if (rawSchedules && rawSchedules.length > 0) {
+            const newSchedules = rawSchedules.map(({ id, created_at, ...rest }) => ({
+                ...rest,
+                week_start_date: targetWeekDate
+            }));
+            await supabase.from('schedules').insert(newSchedules);
+        }
+
+        if (rawDisabled && rawDisabled.length > 0) {
+            const newDisabled = rawDisabled.map(({ id, created_at, ...rest }) => ({
+                ...rest,
+                week_start_date: targetWeekDate
+            }));
+            await supabase.from('disabled_days').insert(newDisabled);
+        }
+    };
+
+    const moveWeek = async (targetWeekDate: string) => {
+        // Clear destination week first if needed? No, we just blindly copy or move for now. Usually users want clean transfer.
+        // Copy first, then clear origin
+        await copyWeek(targetWeekDate);
+        await clearWeek(selectedDate);
+    };
+
+
     return {
         doctors,
         rooms,
@@ -128,8 +172,11 @@ export function useScheduleData(selectedDate: string) {
         disabledDays,
         fetchSchedules,
         addSchedule,
+        updateSchedule,
         deleteSchedule,
         toggleDayDisabled,
         clearWeek,
+        copyWeek,
+        moveWeek,
     };
 }

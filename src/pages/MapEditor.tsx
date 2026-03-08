@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, addDays } from 'date-fns';
+import { format, startOfWeek, addDays, isSunday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Share2 } from 'lucide-react';
 
@@ -8,6 +8,9 @@ import AllocationForm from '../components/editor/AllocationForm';
 import DayCard from '../components/editor/DayCard';
 import ShareModal from '../components/modals/ShareModal';
 import ConfirmClearModal from '../components/modals/ConfirmClearModal';
+import ChangeWeekModal from '../components/modals/ChangeWeekModal';
+import { RefreshCw } from 'lucide-react';
+import { Schedule } from '../types';
 
 function buildWeekDays(selectedDate: string) {
   const weekStart = new Date(selectedDate + 'T12:00:00');
@@ -24,26 +27,31 @@ function buildWeekDays(selectedDate: string) {
 }
 
 export default function MapEditor() {
-  const [selectedDate, setSelectedDate] = useState(
-    format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-  );
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const baseDate = isSunday(today) ? addDays(today, 1) : today;
+    return format(startOfWeek(baseDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  });
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isChangeWeekModalOpen, setIsChangeWeekModalOpen] = useState(false);
   const [pendingDate, setPendingDate] = useState<string | null>(null);
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
 
-  const { doctors, rooms, schedules, disabledDays, addSchedule, deleteSchedule, toggleDayDisabled, clearWeek } =
+  const { doctors, rooms, schedules, disabledDays, addSchedule, updateSchedule, deleteSchedule, toggleDayDisabled, clearWeek, copyWeek, moveWeek } =
     useScheduleData(selectedDate);
 
   const weekDays = buildWeekDays(selectedDate);
   const shareUrl = `${window.location.origin}/share?week=${selectedDate}`;
 
   useEffect(() => {
-    const isModalOpen = isShareModalOpen || isConfirmClearOpen;
+    const isModalOpen = isShareModalOpen || isConfirmClearOpen || isChangeWeekModalOpen;
     document.body.classList.toggle('modal-open', isModalOpen);
     return () => document.body.classList.remove('modal-open');
-  }, [isShareModalOpen, isConfirmClearOpen]);
+  }, [isShareModalOpen, isConfirmClearOpen, isChangeWeekModalOpen]);
 
   const handleWeekChange = (value: string) => {
     if (!value) return;
@@ -73,6 +81,24 @@ export default function MapEditor() {
     }
   };
 
+  const handleCopyWeek = async (newDate: string) => {
+    setIsTransferring(true);
+    try {
+      await copyWeek(newDate);
+
+      // Apaga a semana ANTERIOR à semana atual (selectedDate)
+      const weekBeforeCurrent = format(addDays(new Date(selectedDate + 'T12:00:00'), -7), 'yyyy-MM-dd');
+      await clearWeek(weekBeforeCurrent);
+
+      setIsChangeWeekModalOpen(false);
+      setSelectedDate(newDate);
+    } catch (err) {
+      console.error('Error copying week:', err);
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
   const handleAddSchedule = ({ day, roomId, doctorId, shift, startTime, endTime }: {
     day: number; roomId: string; doctorId: string; shift: string; startTime: string; endTime: string;
   }) => {
@@ -84,6 +110,24 @@ export default function MapEditor() {
       shift,
       time_slot: `${startTime} - ${endTime}`,
     });
+  };
+
+  const handleEditSchedule = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+    document.getElementById('allocation-form')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleUpdateSchedule = (id: string, { day, roomId, doctorId, shift, startTime, endTime }: {
+    day: number; roomId: string; doctorId: string; shift: string; startTime: string; endTime: string;
+  }) => {
+    updateSchedule(id, {
+      day_of_week: day,
+      room_id: roomId,
+      doctor_id: doctorId,
+      shift,
+      time_slot: `${startTime} - ${endTime}`,
+    });
+    setEditingSchedule(null);
   };
 
   return (
@@ -105,6 +149,13 @@ export default function MapEditor() {
             onChange={(e) => handleWeekChange(e.target.value)}
           />
           <button
+            onClick={() => setIsChangeWeekModalOpen(true)}
+            title="Copiar ou Mover Semana"
+            className="w-full sm:w-auto bg-blue-100 text-blue-700 px-4 py-3 rounded-xl hover:bg-blue-200 flex items-center justify-center transition-all font-bold text-sm shadow-lg shadow-brand-primary/20"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+          <button
             onClick={() => setIsShareModalOpen(true)}
             className="w-full sm:w-auto bg-brand-primary text-white px-6 py-3 rounded-xl hover:opacity-90 flex items-center justify-center transition-all font-bold text-sm shadow-lg shadow-brand-primary/20"
           >
@@ -120,6 +171,9 @@ export default function MapEditor() {
         doctors={doctors}
         rooms={rooms}
         onAdd={handleAddSchedule}
+        editingSchedule={editingSchedule}
+        onUpdate={handleUpdateSchedule}
+        onCancelEdit={() => setEditingSchedule(null)}
       />
 
       {/* Weekly View */}
@@ -132,15 +186,22 @@ export default function MapEditor() {
             isDisabled={disabledDays.includes(day.index)}
             onToggleDisabled={toggleDayDisabled}
             onDeleteSchedule={deleteSchedule}
+            onEditSchedule={handleEditSchedule}
           />
         ))}
       </div>
 
-      {/* Modals */}
       <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         shareUrl={shareUrl}
+      />
+      <ChangeWeekModal
+        isOpen={isChangeWeekModalOpen}
+        onClose={() => setIsChangeWeekModalOpen(false)}
+        currentDate={selectedDate}
+        onCopy={handleCopyWeek}
+        isLoading={isTransferring}
       />
       <ConfirmClearModal
         isOpen={isConfirmClearOpen}

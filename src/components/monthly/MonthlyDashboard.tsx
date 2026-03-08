@@ -118,11 +118,11 @@ export default function MonthlyDashboard({
                         if (a.date !== dateStr) return false;
                         if (filterShift === 'ALL') return true;
                         // If filterShift is 'MANHÃ', include 'MANHÃ' and 'MANHÃ/TARDE'
-                        if (filterShift === 'MANHÃ') return a.shift === 'MANHÃ' || a.shift === 'MANHÃ/TARDE';
+                        if (filterShift === 'MANHÃ') return a.shift === 'MANHÃ' || a.shift === 'MANHA' || a.shift === 'MANHÃ/TARDE' || a.shift === 'MANHA/TARDE' || a.shift === 'M/T';
                         // If filterShift is 'TARDE', include 'TARDE' and 'MANHÃ/TARDE'
-                        if (filterShift === 'TARDE') return a.shift === 'TARDE' || a.shift === 'MANHÃ/TARDE';
+                        if (filterShift === 'TARDE') return a.shift === 'TARDE' || a.shift === 'MANHÃ/TARDE' || a.shift === 'MANHA/TARDE' || a.shift === 'M/T';
                         // If filterShift is 'MANHÃ/TARDE', ONLY include 'MANHÃ/TARDE' assignments
-                        if (filterShift === 'MANHÃ/TARDE') return a.shift === 'MANHÃ/TARDE';
+                        if (filterShift === 'MANHÃ/TARDE') return a.shift === 'MANHÃ/TARDE' || a.shift === 'MANHA/TARDE' || a.shift === 'M/T';
                         return true;
                     });
 

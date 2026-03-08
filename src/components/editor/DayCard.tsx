@@ -14,6 +14,7 @@ interface DayCardProps {
     isDisabled: boolean;
     onToggleDisabled: (dayIndex: number) => void;
     onDeleteSchedule: (id: string) => void;
+    onEditSchedule: (schedule: Schedule) => void;
 }
 
 export default function DayCard({
@@ -22,6 +23,7 @@ export default function DayCard({
     isDisabled,
     onToggleDisabled,
     onDeleteSchedule,
+    onEditSchedule,
 }: DayCardProps) {
     return (
         <div className={`bg-white shadow rounded-lg overflow-hidden ${isDisabled ? 'opacity-60' : ''}`}>
@@ -104,8 +106,16 @@ export default function DayCard({
                                             </td>
                                             <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <button
+                                                    onClick={() => onEditSchedule(schedule)}
+                                                    className="text-blue-600 hover:text-blue-900 p-1 mr-2"
+                                                    title="Editar"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="m15 5 4 4" /></svg>
+                                                </button>
+                                                <button
                                                     onClick={() => onDeleteSchedule(schedule.id)}
                                                     className="text-red-600 hover:text-red-900 p-1"
+                                                    title="Excluir"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>

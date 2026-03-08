@@ -595,6 +595,12 @@ export default function MonthlyManagement() {
       const fromStartDate = `${fromYear}-${String(fromMonth).padStart(2, '0')}-01`;
       const fromEndDate = `${fromYear}-${String(fromMonth).padStart(2, '0')}-31`;
 
+      const dateToDelete = subMonths(currentDate, 1);
+      const deleteMonth = dateToDelete.getMonth() + 1;
+      const deleteYear = dateToDelete.getFullYear();
+      const deleteStartDate = `${deleteYear}-${String(deleteMonth).padStart(2, '0')}-01`;
+      const deleteEndDate = `${deleteYear}-${String(deleteMonth).padStart(2, '0')}-31`;
+
       if (action === 'copy_and_clear') {
         const toMonth = pendingMonthChange.getMonth() + 1;
         const toYear = pendingMonthChange.getFullYear();
@@ -626,13 +632,13 @@ export default function MonthlyManagement() {
           }
         }
 
-        // 3. Delete old month allocations
-        await supabase.from('monthly_allocations').delete().gte('date', fromStartDate).lte('date', fromEndDate);
-        setSuccess('Alocações copiadas e mês anterior limpo!');
+        // 3. Delete old month allocations (the month before the current one)
+        await supabase.from('monthly_allocations').delete().gte('date', deleteStartDate).lte('date', deleteEndDate);
+        setSuccess(`Alocações copiadas e mês de ${format(dateToDelete, 'MMMM', { locale: ptBR })} limpo!`);
       } else if (action === 'clear_only') {
-        // Just clear current month
-        await supabase.from('monthly_allocations').delete().gte('date', fromStartDate).lte('date', fromEndDate);
-        setSuccess('Mês anterior limpo!');
+        // Just clear the month before the current one
+        await supabase.from('monthly_allocations').delete().gte('date', deleteStartDate).lte('date', deleteEndDate);
+        setSuccess(`Mês de ${format(dateToDelete, 'MMMM', { locale: ptBR })} limpo!`);
       }
 
       // Finally move to next month
@@ -786,7 +792,7 @@ export default function MonthlyManagement() {
                 Semana Anterior
               </button>
 
-              <span className="text-sm font-black text-gray-400 uppercase tracking-widest">
+              <span className="text-sm font-black text-gray-500 uppercase tracking-widest">
                 Semana {currentWeekIndex + 1} de {weeks.length}
               </span>
 
@@ -805,7 +811,7 @@ export default function MonthlyManagement() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="p-5 text-left text-xs font-black text-gray-400 uppercase border-r border-gray-200 sticky left-0 bg-gray-50 z-10 min-w-[180px]">
+                    <th className="p-5 text-left text-xs font-black text-gray-500 uppercase border-r border-gray-300 sticky left-0 bg-gray-50 z-[20] min-w-[180px]">
                       Consultórios
                     </th>
                     {currentWeekDays.map(day => {
@@ -840,7 +846,7 @@ export default function MonthlyManagement() {
                 <tbody>
                   {rooms.map(room => (
                     <tr key={room.id} className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
-                      <td className="p-5 text-sm font-bold text-gray-700 border-r border-gray-200 sticky left-0 bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.03)]">
+                      <td className="p-5 text-sm font-bold text-gray-700 border-r border-gray-200 sticky left-0 bg-white z-[15] shadow-[4px_0_10px_rgba(0,0,0,0.03)]">
                         <div className="flex items-center gap-3">
                           <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: room.color }}></div>
                           <span className="truncate">{room.name}</span>
@@ -918,7 +924,7 @@ export default function MonthlyManagement() {
                                             : 'bg-green-50 border-green-200 text-green-800 shadow-sm cursor-grab active:cursor-grabbing'
                                       : isHighlighted
                                         ? 'bg-yellow-100 border-yellow-400 text-yellow-800 shadow-[0_0_10px_rgba(234,179,8,0.3)] scale-105 z-10 cursor-pointer'
-                                        : 'bg-gray-50/40 border-dashed border-gray-200 text-gray-400 opacity-40 hover:opacity-100 hover:bg-white hover:border-solid cursor-pointer'
+                                        : 'bg-gray-100/50 border-dashed border-gray-300 text-gray-500 opacity-70 hover:opacity-100 hover:bg-white hover:border-solid cursor-pointer'
                                       } ${draggedAlloc && !alloc ? 'ring-2 ring-green-400 ring-dashed' : ''}`}
                                     onClick={(e) => {
                                       if (isSpacePressed) {
@@ -947,7 +953,7 @@ export default function MonthlyManagement() {
                                     }}
                                   >
                                     <div className="flex items-center gap-1 overflow-hidden">
-                                      <span className="font-black opacity-40 min-w-[12px]">
+                                      <span className="font-black opacity-70 min-w-[12px]">
                                         {isInterdicted ? <X className="w-3 h-3" /> : (isBlue ? 'I' : slot[0])}
                                       </span>
                                       <span className="font-bold truncate">
@@ -1278,7 +1284,7 @@ export default function MonthlyManagement() {
 
               <p className="text-sm text-gray-600 mb-6">
                 Você está saindo de <strong>{format(currentDate, 'MMMM', { locale: ptBR })}</strong>.
-                Deseja copiar as alocações para <strong>{format(pendingMonthChange, 'MMMM', { locale: ptBR })}</strong> e limpar o mês anterior?
+                Deseja copiar as alocações para <strong>{format(pendingMonthChange, 'MMMM', { locale: ptBR })}</strong> e limpar o mês de <strong>{format(subMonths(currentDate, 1), 'MMMM', { locale: ptBR })}</strong>?
               </p>
 
               <div className="flex flex-col gap-3">
@@ -1295,7 +1301,7 @@ export default function MonthlyManagement() {
                   className="w-full py-3 px-4 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Não, apenas avançar o mês limpo
+                  Limpar anterior (Não copiar)
                 </button>
 
                 <button

@@ -35,7 +35,7 @@ export default function ScheduleTable({ schedules, disabled, dayLabel, formatted
 
       <div className="overflow-x-auto -mx-0">
         <table className="min-w-full border-collapse">
-          <thead>
+          <thead style={{ display: 'table-header-group' }}>
             <tr className="bg-gray-50/50 border-b border-gray-200">
               <th className="px-3 md:px-4 py-3 text-left text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest border-r border-gray-100">Consultório</th>
               <th className="px-3 md:px-4 py-3 text-left text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest border-r border-gray-100">Profissional</th>
@@ -52,18 +52,18 @@ export default function ScheduleTable({ schedules, disabled, dayLabel, formatted
               </tr>
             ) : (
               schedules.map((schedule) => (
-                <tr key={schedule.id} className="last:border-0 hover:bg-gray-50/50 transition-colors">
+                <tr key={schedule.id} className="last:border-0 hover:bg-gray-50/50 transition-colors" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                   <td
                     className="px-3 md:px-4 py-3 text-[11px] md:text-sm font-bold border-r border-gray-100 text-gray-900"
                     style={{
-                      backgroundColor: schedule.shift === 'MANHÃ' ? 'rgba(22, 163, 74, 0.05)' : schedule.shift === 'TARDE' ? 'rgba(234, 88, 12, 0.05)' : 'rgba(37, 99, 235, 0.05)'
+                      backgroundColor: (schedule.shift === 'MANHÃ' || schedule.shift === 'MANHA') ? 'rgba(34, 197, 94, 0.05)' : schedule.shift === 'TARDE' ? 'rgba(234, 88, 12, 0.05)' : 'rgba(37, 99, 235, 0.05)'
                     }}
                   >
                     <div className="flex items-center">
                       <div
                         className="w-2 h-2 md:w-3 md:h-3 rounded-full mr-2 shadow-sm flex-shrink-0"
                         style={{
-                          backgroundColor: schedule.shift === 'MANHÃ' ? '#16a34a' : schedule.shift === 'TARDE' ? '#ea580c' : '#2563eb'
+                          backgroundColor: (schedule.shift === 'MANHÃ' || schedule.shift === 'MANHA') ? '#22c55e' : schedule.shift === 'TARDE' ? '#ea580c' : '#2563eb'
                         }}
                       />
                       <div className="flex flex-col">
@@ -72,13 +72,13 @@ export default function ScheduleTable({ schedules, disabled, dayLabel, formatted
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 md:px-4 py-3 text-[11px] md:text-sm text-gray-800 border-r border-gray-100 font-semibold">
+                  <td className="px-3 md:px-4 py-3 text-[11px] md:text-sm text-gray-800 border-r border-gray-100 font-semibold bg-white">
                     {schedule.doctor_name}
                   </td>
-                  <td className="px-2 md:px-4 py-3 text-[10px] md:text-xs text-gray-600 text-center border-r border-gray-100 font-medium whitespace-nowrap">
+                  <td className="px-2 md:px-4 py-3 text-[10px] md:text-xs text-gray-600 text-center border-r border-gray-100 font-medium whitespace-nowrap bg-white">
                     {schedule.time_slot}
                   </td>
-                  <td className="hidden md:table-cell px-4 py-3 text-xs text-gray-500 uppercase tracking-tighter">
+                  <td className="hidden md:table-cell px-4 py-3 text-xs text-gray-500 uppercase tracking-tighter bg-white">
                     {schedule.doctor_specialty}
                   </td>
                 </tr>

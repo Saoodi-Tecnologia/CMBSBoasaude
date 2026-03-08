@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { Doctor, Room } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { Plus, Save, X } from 'lucide-react';
+import { Doctor, Room, Schedule } from '../../types';
 
 interface WeekDay {
     index: number;
@@ -20,9 +20,19 @@ interface AllocationFormProps {
         startTime: string;
         endTime: string;
     }) => void;
+    editingSchedule?: Schedule | null;
+    onUpdate?: (id: string, payload: {
+        day: number;
+        roomId: string;
+        doctorId: string;
+        shift: string;
+        startTime: string;
+        endTime: string;
+    }) => void;
+    onCancelEdit?: () => void;
 }
 
-export default function AllocationForm({ weekDays, doctors, rooms, onAdd }: AllocationFormProps) {
+export default function AllocationForm({ weekDays, doctors, rooms, onAdd, editingSchedule, onUpdate, onCancelEdit }: AllocationFormProps) {
     const [selectedDay, setSelectedDay] = useState<number>(weekDays[0]?.index ?? 1);
     const [selectedRoom, setSelectedRoom] = useState('');
     const [selectedDoctor, setSelectedDoctor] = useState('');
@@ -30,16 +40,42 @@ export default function AllocationForm({ weekDays, doctors, rooms, onAdd }: Allo
     const [startTime, setStartTime] = useState('07:00');
     const [endTime, setEndTime] = useState('13:00');
 
-    const handleAdd = () => {
+    useEffect(() => {
+        if (editingSchedule) {
+            setSelectedDay(editingSchedule.day_of_week);
+            setSelectedRoom(editingSchedule.room_id || '');
+            setSelectedDoctor(editingSchedule.doctor_id || '');
+            setSelectedShift(editingSchedule.shift || 'MANHA');
+            const [start, end] = (editingSchedule.time_slot || '').split(' - ');
+            setStartTime(start || '07:00');
+            setEndTime(end || '13:00');
+        } else {
+            setSelectedDay(weekDays[0]?.index ?? 1);
+            setSelectedRoom('');
+            setSelectedDoctor('');
+            setSelectedShift('MANHA');
+            setStartTime('07:00');
+            setEndTime('13:00');
+        }
+    }, [editingSchedule, weekDays]);
+
+    const handleSubmit = () => {
         if (!selectedRoom || !selectedDoctor) return;
-        onAdd({
+
+        const payload = {
             day: selectedDay,
             roomId: selectedRoom,
             doctorId: selectedDoctor,
             shift: selectedShift,
             startTime,
             endTime,
-        });
+        };
+
+        if (editingSchedule && onUpdate) {
+            onUpdate(editingSchedule.id, payload);
+        } else {
+            onAdd(payload);
+        }
     };
 
     const inputClass =
@@ -47,8 +83,21 @@ export default function AllocationForm({ weekDays, doctors, rooms, onAdd }: Allo
     const labelClass = 'block text-xs md:text-sm font-medium text-gray-700';
 
     return (
-        <div className="bg-white shadow rounded-lg p-4 md:p-6">
-            <h2 className="text-lg font-semibold mb-4">Adicionar Alocacao</h2>
+        <div id="allocation-form" className={`bg-white shadow rounded-lg p-4 md:p-6 transition-all duration-300 ${editingSchedule ? 'ring-2 ring-blue-500 bg-blue-50/10' : ''}`}>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">
+                    {editingSchedule ? 'Editar Alocação' : 'Adicionar Alocação'}
+                </h2>
+                {editingSchedule && onCancelEdit && (
+                    <button
+                        onClick={onCancelEdit}
+                        className="text-gray-500 hover:text-gray-700 flex items-center text-sm font-medium"
+                    >
+                        <X className="w-4 h-4 mr-1" />
+                        Cancelar
+                    </button>
+                )}
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-7 gap-3 md:gap-4 items-end">
 
                 <div className="col-span-2 md:col-span-1">
@@ -103,10 +152,14 @@ export default function AllocationForm({ weekDays, doctors, rooms, onAdd }: Allo
 
                 <div className="col-span-2 md:col-span-1">
                     <button
-                        onClick={handleAdd}
-                        className="w-full bg-brand-primary text-white px-4 py-3 rounded-xl hover:opacity-90 flex items-center justify-center transition-all text-sm font-bold shadow-lg shadow-brand-primary/20"
+                        onClick={handleSubmit}
+                        className={`w-full text-white px-4 py-3 rounded-xl hover:opacity-90 flex items-center justify-center transition-all text-sm font-bold shadow-lg ${editingSchedule ? 'bg-blue-600 shadow-blue-600/20' : 'bg-brand-primary shadow-brand-primary/20'}`}
                     >
-                        <Plus className="w-4 h-4 mr-1 md:mr-2 flex-shrink-0" /> Adicionar
+                        {editingSchedule ? (
+                            <><Save className="w-4 h-4 mr-1 md:mr-2 flex-shrink-0" /> Salvar</>
+                        ) : (
+                            <><Plus className="w-4 h-4 mr-1 md:mr-2 flex-shrink-0" /> Adicionar</>
+                        )}
                     </button>
                 </div>
 

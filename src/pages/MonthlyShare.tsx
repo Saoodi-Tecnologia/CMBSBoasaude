@@ -24,6 +24,7 @@ export default function MonthlyShare() {
   const [allocations, setAllocations] = useState<MonthlyAllocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+  const [filterShift, setFilterShift] = useState('ALL');
 
   const currentDate = new Date(year, month - 1, 1);
 
@@ -108,32 +109,42 @@ export default function MonthlyShare() {
               </p>
             </div>
 
-            {/* Navigation Controls (Hidden in Print) */}
-            <div className="flex items-center gap-4 bg-white p-1.5 rounded-xl border border-gray-200 print:hidden">
-              <button
-                onClick={() => setCurrentWeekIndex(prev => Math.max(0, prev - 1))}
-                disabled={currentWeekIndex === 0}
-                className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all disabled:opacity-30"
+            {/* Navigation & Filter Controls (Hidden in Print) */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-1.5 rounded-xl border border-gray-200 print:hidden">
+              <select
+                className="text-xs font-bold py-2 px-3 rounded-lg border border-gray-100 outline-none cursor-pointer bg-gray-50/50 hover:bg-white hover:border-brand-primary/20 transition-all"
+                value={filterShift}
+                onChange={(e) => setFilterShift(e.target.value)}
               >
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
-              </button>
+                <option value="ALL">Todos Turnos</option>
+                <option value="MANHÃ">Manhã</option>
+                <option value="TARDE">Tarde</option>
+                <option value="MANHÃ/TARDE">Integral</option>
+              </select>
 
-              <div className="text-center min-w-[150px]">
-                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Visualizando
-                </span>
-                <span className="text-sm font-black text-gray-800 uppercase">
-                  {currentWeekDays.length > 0 && `De ${format(currentWeekDays[0], 'dd/MM')} a ${format(currentWeekDays[currentWeekDays.length - 1], 'dd/MM')}`}
-                </span>
+              <div className="flex items-center gap-1 border-l border-gray-100 pl-1">
+                <button
+                  onClick={() => setCurrentWeekIndex(prev => Math.max(0, prev - 1))}
+                  disabled={currentWeekIndex === 0}
+                  className="p-2 hover:bg-gray-50 rounded-lg transition-all disabled:opacity-30"
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-600" />
+                </button>
+
+                <div className="text-center min-w-[120px]">
+                  <span className="text-sm font-black text-gray-800 uppercase">
+                    {currentWeekDays.length > 0 && `Semana ${currentWeekIndex + 1}`}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setCurrentWeekIndex(prev => Math.min(weeks.length - 1, prev + 1))}
+                  disabled={currentWeekIndex === weeks.length - 1}
+                  className="p-2 hover:bg-gray-50 rounded-lg transition-all disabled:opacity-30"
+                >
+                  <ChevronRight className="w-5 h-5 text-gray-600" />
+                </button>
               </div>
-
-              <button
-                onClick={() => setCurrentWeekIndex(prev => Math.min(weeks.length - 1, prev + 1))}
-                disabled={currentWeekIndex === weeks.length - 1}
-                className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all disabled:opacity-30"
-              >
-                <ChevronRight className="w-5 h-5 text-gray-600" />
-              </button>
             </div>
           </div>
         </div>
@@ -170,25 +181,59 @@ export default function MonthlyShare() {
                       <td key={dateStr} className="border-b border-gray-200 p-2 align-top h-24 transition-colors hover:bg-gray-50">
                         <div className="flex flex-col gap-1.5 h-full">
                           {['MANHÃ', 'TARDE'].map(slot => {
+                            let shouldHide = false;
+                            if (filterShift === 'MANHÃ' && slot === 'TARDE') shouldHide = true;
+                            if (filterShift === 'TARDE' && slot === 'MANHÃ') shouldHide = true;
+
                             const alloc = dayAllocations.find(a =>
-                              a.shift === slot || a.shift === 'MANHÃ/TARDE'
+                              a.shift === slot ||
+                              a.shift === slot.replace('Ã', 'A') ||
+                              a.shift === 'MANHÃ/TARDE' ||
+                              a.shift === 'MANHA/TARDE' ||
+                              a.shift === 'M/T'
                             );
+
+                            const isInterdicted = alloc && !alloc.doctor_id;
+                            // Check if the same doctor is allocated to the other shift in the same room/day
+                            const isSameDoctorFullDay = alloc &&
+                              alloc.shift !== 'MANHÃ/TARDE' &&
+                              alloc.shift !== 'MANHA/TARDE' &&
+                              alloc.shift !== 'M/T' &&
+                              dayAllocations.some(a => a.id !== alloc.id && a.doctor_id === alloc.doctor_id);
+
+                            // Integral if M/T shift OR same doctor in both shifts
+                            const isActuallyIntegral = !isInterdicted && (
+                              alloc?.shift === 'MANHÃ/TARDE' ||
+                              alloc?.shift === 'MANHA/TARDE' ||
+                              alloc?.shift === 'M/T' ||
+                              isSameDoctorFullDay
+                            );
+
+                            // If filtering by integral, and it's NOT integral, or there's NO allocation, hide it
+                            if (filterShift === 'MANHÃ/TARDE' && (!alloc || !isActuallyIntegral)) {
+                              shouldHide = true;
+                            }
+
+                            if (shouldHide) {
+                              return (
+                                <div key={`hidden-${slot}`} className="flex-1 opacity-0 pointer-events-none"></div>
+                              );
+                            }
 
                             if (!alloc) {
                               return (
-                                <div key={slot} className="flex-1 rounded border border-dashed border-gray-100 bg-gray-50/50 flex items-center justify-center">
-                                  <span className="text-[9px] text-gray-300 font-medium uppercase tracking-wider">Livre</span>
+                                <div key={slot} className="flex-1 p-1.5 rounded-lg border border-dashed border-gray-300 bg-gray-100/40 flex items-center justify-center min-h-[42px]">
+                                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Livre</span>
                                 </div>
                               );
                             }
 
-                            const isInterdicted = alloc && !alloc.doctor_id;
-                            const isIntegral = !isInterdicted && alloc.shift === 'MANHÃ/TARDE';
+                            const isIntegral = isActuallyIntegral;
 
                             return (
                               <div
                                 key={slot}
-                                className={`flex-1 p-1.5 rounded-lg border flex flex-col justify-center ${isInterdicted
+                                className={`flex-1 p-1.5 rounded-lg border flex flex-col justify-center overflow-hidden min-h-[42px] max-h-[46px] ${isInterdicted
                                   ? 'bg-red-50 border-red-100'
                                   : isIntegral
                                     ? 'bg-blue-50 border-blue-100'
@@ -198,17 +243,17 @@ export default function MonthlyShare() {
                                   }`}
                               >
                                 <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className={`text-[9px] font-black uppercase px-1 rounded ${isInterdicted
-                                    ? 'bg-red-100 text-red-700'
+                                  <span className={`text-[9px] font-black uppercase px-1 rounded shrink-0 ${isInterdicted
+                                    ? 'bg-red-100 text-red-800'
                                     : isIntegral
-                                      ? 'bg-blue-100 text-blue-700'
+                                      ? 'bg-blue-50 border-blue-100 text-blue-800'
                                       : slot === 'MANHÃ'
-                                        ? 'bg-orange-100 text-orange-700'
-                                        : 'bg-green-100 text-green-700'
+                                        ? 'bg-orange-50 border-orange-100 text-orange-800'
+                                        : 'bg-green-50 border-green-100 text-green-800'
                                     }`}>
-                                    {isInterdicted ? 'X' : (isIntegral ? 'INT' : slot === 'MANHÃ' ? 'M' : 'T')}
+                                    {isInterdicted ? 'X' : (isActuallyIntegral ? 'INT' : slot === 'MANHÃ' ? 'M' : 'T')}
                                   </span>
-                                  <span className={`text-[10px] font-bold truncate ${isInterdicted
+                                  <span className={`text-[10px] font-bold line-clamp-2 leading-tight ${isInterdicted
                                     ? 'text-red-900'
                                     : isIntegral
                                       ? 'text-blue-900'
