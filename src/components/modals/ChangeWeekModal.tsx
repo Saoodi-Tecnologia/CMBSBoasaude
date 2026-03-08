@@ -100,7 +100,7 @@ export default function ChangeWeekModal({
                             className="w-full py-3 px-4 bg-blue-100 hover:bg-blue-200 disabled:bg-blue-50 text-blue-700 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2"
                         >
                             <Copy className="w-4 h-4" />
-                            Copiar e apagar a semana passada
+                            Copiar e apagar a semana retrasada
                         </button>
                     </div>
                 </div>
