@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { format, parseISO, addDays, startOfWeek, isSunday } from 'date-fns';
+import { format, parseISO, addDays, startOfWeek, isSunday, isBefore, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Schedule } from '../types';
 import { Printer } from 'lucide-react';
@@ -132,6 +132,13 @@ export default function SharedView() {
         </div>
 
         {weekDays.map((day) => {
+          const today = startOfDay(new Date());
+          const dayDate = startOfDay(day.date);
+          
+          if (isBefore(dayDate, today)) {
+            return null;
+          }
+
           let daySchedules = schedules.filter((s) => s.day_of_week === day.index);
           const isDisabled = disabledDays.includes(day.index);
 
