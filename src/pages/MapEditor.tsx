@@ -58,12 +58,9 @@ export default function MapEditor() {
     const date = new Date(value + 'T12:00:00');
     const newDate = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
     if (newDate === selectedDate) return;
-    if (schedules.length > 0 || disabledDays.length > 0) {
-      setPendingDate(newDate);
-      setIsConfirmClearOpen(true);
-    } else {
-      setSelectedDate(newDate);
-    }
+    // Removida a verificação e o ConfirmClearModal destrutivo que apagava a semana.
+    // Agora o painel apenas avança para a semana solicitada para ser visualizada.
+    setSelectedDate(newDate);
   };
 
   const handleConfirmClear = async () => {
@@ -86,8 +83,8 @@ export default function MapEditor() {
     try {
       await copyWeek(newDate);
 
-      // Apaga a semana ANTERIOR à semana atual (selectedDate)
-      const weekBeforeCurrent = format(addDays(new Date(selectedDate + 'T12:00:00'), -7), 'yyyy-MM-dd');
+      // Apaga a semana de 15 dias atrás (retrasada) e não a anterior (passada).
+      const weekBeforeCurrent = format(addDays(new Date(selectedDate + 'T12:00:00'), -14), 'yyyy-MM-dd');
       await clearWeek(weekBeforeCurrent);
 
       setIsChangeWeekModalOpen(false);
