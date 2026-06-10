@@ -111,9 +111,6 @@ export default function MonthlyManagement() {
   } | null>(null);
   const [quickSearchTerm, setQuickSearchTerm] = useState('');
 
-  // Month Transition State
-  const [pendingMonthChange, setPendingMonthChange] = useState<Date | null>(null);
-  const [showMonthTransitionModal, setShowMonthTransitionModal] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Space Key Tracking
@@ -575,81 +572,7 @@ export default function MonthlyManagement() {
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
     const nextDate = direction === 'next' ? addMonths(currentDate, 1) : subMonths(currentDate, 1);
-
-    // If we have allocations in the current month, ask the user what to do
-    if (allocations.length > 0) {
-      setPendingMonthChange(nextDate);
-      setShowMonthTransitionModal(true);
-    } else {
-      setCurrentDate(nextDate);
-    }
-  };
-
-  const executeMonthTransition = async (action: 'copy_and_clear' | 'clear_only' | 'keep') => {
-    if (!pendingMonthChange) return;
-
-    setLoading(true);
-    try {
-      const fromMonth = currentDate.getMonth() + 1;
-      const fromYear = currentDate.getFullYear();
-      const fromStartDate = `${fromYear}-${String(fromMonth).padStart(2, '0')}-01`;
-      const fromEndDate = `${fromYear}-${String(fromMonth).padStart(2, '0')}-31`;
-
-      const dateToDelete = subMonths(currentDate, 1);
-      const deleteMonth = dateToDelete.getMonth() + 1;
-      const deleteYear = dateToDelete.getFullYear();
-      const deleteStartDate = `${deleteYear}-${String(deleteMonth).padStart(2, '0')}-01`;
-      const deleteEndDate = `${deleteYear}-${String(deleteMonth).padStart(2, '0')}-31`;
-
-      if (action === 'copy_and_clear') {
-        const toMonth = pendingMonthChange.getMonth() + 1;
-        const toYear = pendingMonthChange.getFullYear();
-
-        // 1. Fetch current month allocations
-        const { data: allocationsToCopy } = await supabase
-          .from('monthly_allocations')
-          .select('*')
-          .gte('date', fromStartDate)
-          .lte('date', fromEndDate);
-
-        // 2. Copy them to the next month
-        if (allocationsToCopy && allocationsToCopy.length > 0) {
-          for (const alloc of allocationsToCopy) {
-            const parts = alloc.date.split('-');
-            if (parts.length === 3) {
-              const d = parseInt(parts[2]);
-              const targetDateObj = new Date(toYear, toMonth - 1, d);
-              if (targetDateObj.getMonth() === toMonth - 1) { // valid matching date
-                const targetDateStr = `${toYear}-${String(toMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                await supabase.from('monthly_allocations').insert([{
-                  date: targetDateStr,
-                  room_id: alloc.room_id,
-                  doctor_id: alloc.doctor_id,
-                  shift: alloc.shift
-                }]);
-              }
-            }
-          }
-        }
-
-        // 3. Delete old month allocations (the month before the current one)
-        await supabase.from('monthly_allocations').delete().gte('date', deleteStartDate).lte('date', deleteEndDate);
-        setSuccess(`Alocações copiadas e mês de ${format(dateToDelete, 'MMMM', { locale: ptBR })} limpo!`);
-      } else if (action === 'clear_only') {
-        // Just clear the month before the current one
-        await supabase.from('monthly_allocations').delete().gte('date', deleteStartDate).lte('date', deleteEndDate);
-        setSuccess(`Mês de ${format(dateToDelete, 'MMMM', { locale: ptBR })} limpo!`);
-      }
-
-      // Finally move to next month
-      setCurrentDate(pendingMonthChange);
-    } catch (err) {
-      setError('Erro ao processar transição de mês.');
-    } finally {
-      setLoading(false);
-      setShowMonthTransitionModal(false);
-      setPendingMonthChange(null);
-    }
+    setCurrentDate(nextDate);
   };
 
   const getOccupancyRate = () => {
@@ -1260,64 +1183,7 @@ export default function MonthlyManagement() {
         </>
       )}
 
-      {/* Month Transition Modal */}
-      {showMonthTransitionModal && pendingMonthChange && (
-        <>
-          <div
-            className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm"
-            onClick={() => {
-              setShowMonthTransitionModal(false);
-              setPendingMonthChange(null);
-            }}
-          />
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] bg-white rounded-2xl shadow-xl border border-gray-100 w-[400px] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-blue-100 p-3 rounded-xl">
-                  <Copy className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">Cópia de Alocações</h3>
-                  <p className="text-sm text-gray-500">O que deseja fazer com as alocações?</p>
-                </div>
-              </div>
 
-              <p className="text-sm text-gray-600 mb-6">
-                Você está saindo de <strong>{format(currentDate, 'MMMM', { locale: ptBR })}</strong>.
-                Deseja copiar as alocações para <strong>{format(pendingMonthChange, 'MMMM', { locale: ptBR })}</strong> e limpar o mês de <strong>{format(subMonths(currentDate, 1), 'MMMM', { locale: ptBR })}</strong>?
-              </p>
-
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => executeMonthTransition('copy_and_clear')}
-                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
-                >
-                  <Copy className="w-4 h-4" />
-                  Sim, colar no próximo mês
-                </button>
-
-                <button
-                  onClick={() => executeMonthTransition('clear_only')}
-                  className="w-full py-3 px-4 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Limpar anterior (Não copiar)
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowMonthTransitionModal(false);
-                    setPendingMonthChange(null);
-                  }}
-                  className="w-full py-3 px-4 text-gray-400 hover:text-gray-600 text-sm font-bold transition-all"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
 
       <ShareModal
         isOpen={isShareModalOpen}
