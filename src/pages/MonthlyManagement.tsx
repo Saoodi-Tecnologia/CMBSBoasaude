@@ -1014,12 +1014,15 @@ export default function MonthlyManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-2 mb-2">
-                  {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
+                <div className="grid grid-cols-6 gap-2 mb-2">
+                  {['S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
                     <div key={i} className="text-center text-xs font-bold text-gray-400 py-1">{d}</div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                <div className="grid grid-cols-6 gap-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                  {daysInMonth.length > 0 && Array.from({ length: getDay(daysInMonth[0]) - 1 }).map((_, idx) => (
+                    <div key={`empty-${idx}`} />
+                  ))}
                   {daysInMonth.map(day => {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const isSelected = selectedDays.includes(dateStr);
